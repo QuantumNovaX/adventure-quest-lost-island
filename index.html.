@@ -2,455 +2,270 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Adventure Quest: Lost Island</title>
-
 <style>
 *{box-sizing:border-box}
-body{
- margin:0;
- overflow:hidden;
- font-family:Arial,sans-serif;
- background:#087eaa;
- color:white;
-}
+body{margin:0;overflow:hidden;font-family:Arial;background:#87ceeb;color:white}
 canvas{display:block}
-#hud{
- position:absolute;
- top:15px;
- left:15px;
- padding:15px;
- border-radius:12px;
- background:#102d35dd;
- z-index:2;
-}
-#hud h2{margin:0 0 10px;color:#a7f5c0}
-#stats{line-height:1.8;font-size:14px}
-#help{
- position:absolute;
- bottom:15px;
- left:50%;
- transform:translateX(-50%);
- background:#102d35dd;
- padding:12px;
- border-radius:10px;
- text-align:center;
- font-size:13px;
- white-space:nowrap;
-}
-#message{
- color:#ffe28a;
- margin-top:7px;
-}
+#hud{position:absolute;top:12px;left:12px;background:#102d35dd;padding:14px;border-radius:12px;z-index:2}
+#hud h2{margin:0 0 8px;color:#a7f5c0}
+#message{color:#ffe28a;margin-top:8px}
+#help{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);background:#102d35dd;padding:10px;border-radius:10px;text-align:center;font-size:12px;white-space:nowrap}
+#controls{position:absolute;bottom:65px;left:15px;display:grid;grid-template-columns:repeat(3,48px);gap:5px}
+#controls button,#gather{background:#173e49dd;color:white;border:1px solid #ffffff88;border-radius:10px;font-size:20px;padding:10px}
+#controls button{height:45px}
+#up{grid-column:2}
+#left{grid-column:1}
+#down{grid-column:2}
+#right{grid-column:3}
+#gather{position:absolute;bottom:80px;right:18px;font-size:15px}
+#error{position:absolute;top:50%;left:10px;right:10px;background:#761d1d;color:white;padding:15px;display:none;z-index:5}
 </style>
-
 <script type="importmap">
-{
- "imports":{
-  "three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
- }
-}
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"}}
 </script>
 </head>
-
 <body>
-
 <div id="hud">
- <h2>🌴 LOST ISLAND</h2>
- <div id="stats">
-  ❤️ Health: 100<br>
-  🪵 Wood: <span id="wood">0</span><br>
-  🪨 Stone: <span id="stone">0</span><br>
-  🍓 Berries: <span id="berries">0</span>
- </div>
- <div id="message">Explore the island!</div>
+<h2>🌴 LOST ISLAND</h2>
+<div>❤️ Health: 100</div>
+<div>🪵 Wood: <span id="wood">0</span></div>
+<div>🪨 Stone: <span id="stone">0</span></div>
+<div>🍓 Berries: <span id="berries">0</span></div>
+<div id="message">Explore the island!</div>
 </div>
-
-<div id="help">
- W A S D / Arrow Keys: Move |
- SPACE: Jump |
- E: Gather
+<div id="help">WASD / Arrows: Move · Space: Jump · E: Gather</div>
+<div id="controls">
+<button id="up">▲</button>
+<button id="left">◀</button>
+<button id="down">▼</button>
+<button id="right">▶</button>
 </div>
+<button id="gather">Gather (E)</button>
+<div id="error"></div>
 
 <script type="module">
 import * as THREE from 'three';
 
-// SCENE
-const scene=new THREE.Scene();
-scene.background=new THREE.Color(0x87ceeb);
-scene.fog=new THREE.Fog(0x87ceeb,65,150);
+try {
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x87ceeb);
+scene.fog = new THREE.Fog(0x87ceeb, 55, 140);
 
-const camera=new THREE.PerspectiveCamera(
- 65,innerWidth/innerHeight,.1,300
-);
-
-const renderer=new THREE.WebGLRenderer({
- antialias:true
-});
+const camera = new THREE.PerspectiveCamera(65, innerWidth/innerHeight, 0.1, 300);
+const renderer = new THREE.WebGLRenderer({antialias:true});
 renderer.setSize(innerWidth,innerHeight);
 renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));
-renderer.shadowMap.enabled=true;
-renderer.shadowMap.type=THREE.PCFSoftShadowMap;
-renderer.toneMapping=THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure=1;
+renderer.shadowMap.enabled = true;
 document.body.appendChild(renderer.domElement);
 
-// LIGHTING
-scene.add(new THREE.HemisphereLight(
- 0xc5eaff,0x59613c,2
-));
-
-const sun=new THREE.DirectionalLight(0xffedca,2.5);
+scene.add(new THREE.HemisphereLight(0xc5eaff,0x59613c,2));
+const sun = new THREE.DirectionalLight(0xffedca,2.5);
 sun.position.set(-30,55,25);
-sun.castShadow=true;
-sun.shadow.mapSize.set(2048,2048);
+sun.castShadow = true;
 scene.add(sun);
 
-// OCEAN
-const ocean=new THREE.Mesh(
+// Ocean
+const ocean = new THREE.Mesh(
  new THREE.PlaneGeometry(300,300),
- new THREE.MeshStandardMaterial({
-  color:0x087fac,
-  roughness:.25,
-  metalness:.1
- })
+ new THREE.MeshStandardMaterial({color:0x087fac,roughness:.3})
 );
-ocean.rotation.x=-Math.PI/2;
-ocean.position.y=-1.3;
+ocean.rotation.x = -Math.PI/2;
+ocean.position.y = -1.3;
 scene.add(ocean);
 
-// ISLAND TERRAIN
-function terrainHeight(x,z){
- const r=Math.sqrt(x*x+z*z);
- if(r>25)return -1;
-
- return 1.2+
-  Math.max(0,1-r/25)*4+
-  Math.sin(x*.22)*.5+
-  Math.cos(z*.19)*.4+
-  Math.sin((x+z)*.16)*.3;
+// Island
+function ground(x,z) {
+ const r = Math.hypot(x,z);
+ return 1.2 + Math.max(0,1-r/25)*4
+  + Math.sin(x*.22)*.5 + Math.cos(z*.19)*.4;
 }
-
-const terrainGeo=new THREE.BufferGeometry();
-const positions=[];
-const colors=[];
-const indices=[];
-
-const rings=45;
-const segments=100;
-
+const positions=[], colors=[], indices=[];
+const rings=45, segments=100;
 for(let i=0;i<=rings;i++){
  const radius=25*i/rings;
-
  for(let j=0;j<=segments;j++){
   const angle=j/segments*Math.PI*2;
   const x=Math.cos(angle)*radius;
   const z=Math.sin(angle)*radius;
-
-  let y=terrainHeight(x,z);
-  if(i===rings)y=-.9;
-
+  const y=i===rings ? -.9 : ground(x,z);
   positions.push(x,y,z);
-
-  let color;
-  if(radius>21)color=new THREE.Color(0xd6bd80);
-  else if(radius>18)color=new THREE.Color(0x9bba68);
-  else color=new THREE.Color(0x397b3d);
-
-  const variation=Math.sin(x*2+z)*.035;
-  color.offsetHSL(0,0,variation);
-  colors.push(color.r,color.g,color.b);
+  const c=new THREE.Color(radius>21?0xd6bd80:radius>18?0x9bba68:0x397b3d);
+  colors.push(c.r,c.g,c.b);
  }
 }
-
 for(let i=0;i<rings;i++){
  for(let j=0;j<segments;j++){
-  const a=i*(segments+1)+j;
-  const b=a+segments+1;
+  const a=i*(segments+1)+j, b=a+segments+1;
   indices.push(a,a+1,b,b,a+1,b+1);
  }
 }
-
-terrainGeo.setAttribute(
- 'position',new THREE.Float32BufferAttribute(positions,3)
-);
-terrainGeo.setAttribute(
- 'color',new THREE.Float32BufferAttribute(colors,3)
-);
-terrainGeo.setIndex(indices);
-terrainGeo.computeVertexNormals();
-
-const island=new THREE.Mesh(
- terrainGeo,
- new THREE.MeshStandardMaterial({
-  vertexColors:true,
-  roughness:1
- })
-);
+const geo=new THREE.BufferGeometry();
+geo.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
+geo.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));
+geo.setIndex(indices);
+geo.computeVertexNormals();
+const island=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({
+ vertexColors:true,side:THREE.DoubleSide,roughness:1
+}));
 island.receiveShadow=true;
-island.castShadow=true;
 scene.add(island);
 
-// PALM TREES
-const trunkMat=new THREE.MeshStandardMaterial({
- color:0x80502c
-});
-const leafMat=new THREE.MeshStandardMaterial({
- color:0x237c3a,
- roughness:.8
-});
-
+// Trees
+const trunkMat=new THREE.MeshStandardMaterial({color:0x80502c});
+const leafMat=new THREE.MeshStandardMaterial({color:0x237c3a});
 function makeTree(x,z){
- const y=terrainHeight(x,z);
-
  const tree=new THREE.Group();
- tree.position.set(x,y,z);
-
- const trunk=new THREE.Mesh(
-  new THREE.CylinderGeometry(.18,.32,4.5,10),
-  trunkMat
- );
+ tree.position.set(x,ground(x,z),z);
+ const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.18,.32,4.5,10),trunkMat);
  trunk.position.y=2.25;
  trunk.castShadow=true;
  tree.add(trunk);
-
  for(let i=0;i<8;i++){
   const angle=i*Math.PI/4;
-
-  const leaf=new THREE.Mesh(
-   new THREE.ConeGeometry(.35,4.2,7),
-   leafMat
-  );
-
-  leaf.position.set(
-   Math.cos(angle)*1.2,
-   4.6,
-   Math.sin(angle)*1.2
-  );
-
+  const leaf=new THREE.Mesh(new THREE.ConeGeometry(.4,4.2,7),leafMat);
+  leaf.position.set(Math.cos(angle)*1.2,4.6,Math.sin(angle)*1.2);
   leaf.rotation.z=-Math.cos(angle)*.9;
   leaf.rotation.x=Math.sin(angle)*.9;
   leaf.rotation.y=angle;
-  leaf.castShadow=true;
   tree.add(leaf);
  }
-
  scene.add(tree);
 }
-
-for(let i=0;i<55;i++){
- const angle=Math.random()*Math.PI*2;
- const radius=8+Math.random()*11;
- makeTree(
-  Math.cos(angle)*radius,
-  Math.sin(angle)*radius
- );
+for(let i=0;i<45;i++){
+ const a=Math.random()*Math.PI*2,r=7+Math.random()*12;
+ makeTree(Math.cos(a)*r,Math.sin(a)*r);
 }
 
-// ROCKS AND RESOURCES
+// Resources
 const resources=[];
-
 function makeResource(x,z,type){
- const y=terrainHeight(x,z);
-
- const colors={
-  wood:0x98602e,
-  stone:0x858c94,
-  berry:0xd93467
- };
-
+ const colors={wood:0x98602e,stone:0x858c94,berry:0xd93467};
  const mesh=new THREE.Mesh(
-  new THREE.DodecahedronGeometry(
-   type==='berry'?.4:.65
-  ),
-  new THREE.MeshStandardMaterial({
-   color:colors[type],
-   roughness:.9
-  })
+  new THREE.DodecahedronGeometry(type==='berry'?.4:.65),
+  new THREE.MeshStandardMaterial({color:colors[type]})
  );
-
- mesh.position.set(x,y+.6,z);
+ mesh.position.set(x,ground(x,z)+.6,z);
  mesh.castShadow=true;
  scene.add(mesh);
-
  resources.push({mesh,type});
 }
-
 for(let i=0;i<24;i++){
- const a=Math.random()*Math.PI*2;
- const r=5+Math.random()*13;
- const types=['wood','stone','berry'];
-
- makeResource(
-  Math.cos(a)*r,
-  Math.sin(a)*r,
-  types[i%3]
- );
+ const a=Math.random()*Math.PI*2,r=5+Math.random()*13;
+ makeResource(Math.cos(a)*r,Math.sin(a)*r,['wood','stone','berry'][i%3]);
 }
 
-// PLAYER
+// Player
 const player=new THREE.Group();
-
 const body=new THREE.Mesh(
  new THREE.CapsuleGeometry(.4,.9,5,10),
  new THREE.MeshStandardMaterial({color:0xe0a05d})
 );
 body.position.y=1;
-body.castShadow=true;
 player.add(body);
-
 const head=new THREE.Mesh(
  new THREE.SphereGeometry(.3,16,16),
  new THREE.MeshStandardMaterial({color:0xf0c39a})
 );
 head.position.y=1.9;
 player.add(head);
-
 scene.add(player);
-player.position.set(0,terrainHeight(0,0),0);
+player.position.set(0,ground(0,0),0);
 
-// CONTROLS
+// Camera starts in a visible position
+camera.position.set(0,ground(0,0)+7,12);
+camera.lookAt(0,ground(0,0)+2,0);
+
+// Controls
 const keys={};
-let velocityY=0;
-let grounded=true;
-
-let inventory={
- wood:0,
- stone:0,
- berry:0
-};
-
+let velocityY=0,grounded=true;
+const inventory={wood:0,stone:0,berry:0};
 addEventListener('keydown',e=>{
  keys[e.key.toLowerCase()]=true;
-
- if(e.code==='Space'&&grounded){
-  velocityY=8;
-  grounded=false;
- }
-
- if(e.key.toLowerCase()==='e'){
-  gather();
- }
+ if(e.code==='Space'&&grounded){velocityY=8;grounded=false;}
+ if(e.key.toLowerCase()==='e')gather();
 });
+addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
 
-addEventListener('keyup',e=>{
- keys[e.key.toLowerCase()]=false;
-});
-
-// GATHERING
-const message=document.getElementById('message');
+// Touch buttons
+function holdButton(id,key){
+ const button=document.getElementById(id);
+ button.addEventListener('pointerdown',e=>{e.preventDefault();keys[key]=true;});
+ for(const event of ['pointerup','pointerleave','pointercancel'])
+  button.addEventListener(event,()=>keys[key]=false);
+}
+holdButton('up','w');
+holdButton('down','s');
+holdButton('left','a');
+holdButton('right','d');
+document.getElementById('gather').addEventListener('click',gather);
 
 function gather(){
- let closest=null;
- let min=3;
-
+ let closest=null,min=3;
  for(const r of resources){
   const d=player.position.distanceTo(r.mesh.position);
-  if(d<min){
-   min=d;
-   closest=r;
-  }
+  if(d<min){min=d;closest=r;}
  }
-
- if(!closest){
-  message.textContent='No resources nearby!';
-  return;
- }
-
+ const message=document.getElementById('message');
+ if(!closest){message.textContent='No resources nearby!';return;}
  inventory[closest.type]++;
-
- document.getElementById('wood').textContent=inventory.wood;
- document.getElementById('stone').textContent=inventory.stone;
- document.getElementById('berries').textContent=inventory.berry;
-
+ document.getElementById(closest.type==='berry'?'berries':closest.type).textContent=
+  inventory[closest.type];
  scene.remove(closest.mesh);
  resources.splice(resources.indexOf(closest),1);
-
  message.textContent='Collected '+closest.type+'!';
 }
 
-// GAME LOOP
+// Game loop
 const clock=new THREE.Clock();
-
 function animate(){
  requestAnimationFrame(animate);
-
  const dt=Math.min(clock.getDelta(),.05);
-
  let dx=0,dz=0;
-
  if(keys.w||keys.arrowup)dz-=1;
  if(keys.s||keys.arrowdown)dz+=1;
  if(keys.a||keys.arrowleft)dx-=1;
  if(keys.d||keys.arrowright)dx+=1;
-
  const direction=new THREE.Vector3(dx,0,dz);
-
  if(direction.length()>0){
   direction.normalize();
-
   player.position.addScaledVector(direction,7*dt);
   player.rotation.y=Math.atan2(direction.x,direction.z);
  }
-
- // JUMP AND GROUND
  velocityY-=20*dt;
  player.position.y+=velocityY*dt;
-
- const groundY=terrainHeight(
-  player.position.x,player.position.z
- );
-
- if(player.position.y<=groundY){
-  player.position.y=groundY;
-  velocityY=0;
-  grounded=true;
+ const gy=ground(player.position.x,player.position.z);
+ if(player.position.y<=gy){
+  player.position.y=gy;velocityY=0;grounded=true;
  }
-
- // ISLAND BOUNDARY
- const distance=Math.hypot(
-  player.position.x,player.position.z
- );
-
+ const distance=Math.hypot(player.position.x,player.position.z);
  if(distance>22){
   player.position.x*=22/distance;
   player.position.z*=22/distance;
  }
-
- // FOLLOW CAMERA
- const target=new THREE.Vector3(
-  player.position.x,
-  player.position.y+2,
-  player.position.z
- );
-
- const cameraTarget=new THREE.Vector3(
-  player.position.x,
-  player.position.y+6,
-  player.position.z+10
- );
-
- camera.position.lerp(cameraTarget,Math.min(1,dt*4));
+ const target=new THREE.Vector3(player.position.x,player.position.y+2,player.position.z);
+ const camTarget=new THREE.Vector3(player.position.x,player.position.y+7,player.position.z+11);
+ camera.position.lerp(camTarget,Math.min(1,dt*4));
  camera.lookAt(target);
-
- // RESOURCE ANIMATION
- resources.forEach(r=>{
-  r.mesh.rotation.y+=dt*.7;
- });
-
+ resources.forEach(r=>r.mesh.rotation.y+=dt*.7);
  renderer.render(scene,camera);
 }
-
 animate();
 
-// RESIZE
 addEventListener('resize',()=>{
  camera.aspect=innerWidth/innerHeight;
  camera.updateProjectionMatrix();
  renderer.setSize(innerWidth,innerHeight);
 });
+} catch(error) {
+ const box=document.getElementById('error');
+ box.style.display='block';
+ box.textContent='Game could not start: '+error.message+
+  '. Please check your internet connection and browser WebGL support.';
+ console.error(error);
+}
 </script>
-
 </body>
 </html>
 
